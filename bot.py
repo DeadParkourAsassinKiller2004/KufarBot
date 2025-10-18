@@ -13,7 +13,7 @@ TELEGRAM_BOT_TOKEN = '8247116313:AAGVL3d_3SNPPYI7Wroo8nSE4HhAoEQkKlI'
 ALLOWED_CHAT_IDS = [575531308]
 
 # URL для запроса к API Kufar
-API_URL = 'https://api.kufar.by/search-api/v2/search/rendered-paginated?cat=1010&cmp=0&cur=USD&gtsy=country-belarus~province-minsk~locality-minsk&lang=ru&prc=r%3A0%2C360&rms=v.or%3A1&size=30&sort=lst.d&typ=let'
+API_URL = 'https://api.kufar.by/search-api/v2/search/rendered-paginated?cat=1010&cmp=0&cur=USD&gtsy=country-belarus~province-minsk~locality-minsk&lang=ru&prc=r:0,360&rms=v.or:1&size=30&sort=lst.d&typ=let'
 
 HEADERS = {
     'accept': '*/*',
