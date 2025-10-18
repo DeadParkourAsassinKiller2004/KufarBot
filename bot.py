@@ -124,7 +124,6 @@ async def send_ad_notification(context: ContextTypes.DEFAULT_TYPE, chat_id: int,
                 disable_web_page_preview=True
             )
     except TelegramError as e:
-        # Если Telegram не смог загрузить фото (например, ссылка битая), тоже отправляем текстом
         logger.warning(f"Не удалось отправить фото {photo_url}. Ошибка: {e}. Отправляю текстом.")
         await context.bot.send_message(
             chat_id=chat_id,
