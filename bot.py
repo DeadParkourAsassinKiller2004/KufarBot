@@ -4,7 +4,7 @@ import os
 import asyncio
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
-from telegram.error import TelegramError # Импортируем класс для обработки ошибок
+from telegram.error import TelegramError
 
 # --- НАСТРОЙКИ ---
 TELEGRAM_BOT_TOKEN = '8247116313:AAGVL3d_3SNPPYI7Wroo8nSE4HhAoEQkKlI'
