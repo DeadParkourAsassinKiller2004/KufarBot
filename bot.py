@@ -231,11 +231,36 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "ℹ️ Мониторинг и не был запущен."
     await update.message.reply_text(text)
 
+async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Очищает файл с ID отправленных объявлений."""
+    chat_id = update.effective_chat.id
+    if chat_id not in ALLOWED_CHAT_IDS:
+        await update.message.reply_text("⛔ У вас нет доступа к этому боту.")
+        return
+        
+    try:
+        # Открываем файл в режиме 'w' (write), что автоматически очищает его.
+        # Если файла нет, он будет создан.
+        with open(SENT_ADS_FILE, 'w') as f:
+            pass  # Ничего не делаем, просто открываем и закрываем, чтобы очистить
+        
+        logger.info(f"Файл {SENT_ADS_FILE} был успешно очищен по команде от пользователя {chat_id}.")
+        
+        await update.message.reply_text(
+            "✅ **Список отслеживания очищен.**\n\n"
+            "При следующем запуске мониторинга (/start) все актуальные объявления будут отправлены как новые."
+        )
+        
+    except IOError as e:
+        logger.error(f"Ошибка при очистке файла {SENT_ADS_FILE}: {e}")
+        await update.message.reply_text("⚠️ Произошла ошибка при очистке списка отслеживания.")
+
 def main():
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("stop", stop_command))
     application.add_handler(CommandHandler("show", show_command))
+    application.add_handler(CommandHandler("clear", clear_command))
     logger.info("Бот запущен...")
     application.run_polling()
 
