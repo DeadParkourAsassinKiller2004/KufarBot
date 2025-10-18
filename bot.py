@@ -1,6 +1,5 @@
 import logging
 import requests
-import time
 import os
 import asyncio
 from telegram import Update
@@ -8,34 +7,28 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 from telegram.error import TelegramError # Импортируем класс для обработки ошибок
 
 # --- НАСТРОЙКИ ---
-# Вставьте сюда ваш токен, полученный от @BotFather
 TELEGRAM_BOT_TOKEN = '8247116313:AAGVL3d_3SNPPYI7Wroo8nSE4HhAoEQkKlI'
 
-# Вставьте сюда ваш Chat ID, полученный от @userinfobot
+# Для получения chat id нужно перейти по ссылке https://api.telegram.org/bot<Токен вашего бота>/getUpdates и отправить сообщение в бот
 ALLOWED_CHAT_IDS = [575531308]
 
-# URL для запроса к API Kufar (можете настроить фильтры здесь)
+# URL для запроса к API Kufar
 API_URL = 'https://api.kufar.by/search-api/v2/search/rendered-paginated?cat=1010&cmp=0&cur=USD&gtsy=country-belarus~province-minsk~locality-minsk&lang=ru&prc=r%3A0%2C360&rms=v.or%3A1&size=30&sort=lst.d&typ=let'
 
-# Заголовки для запроса
 HEADERS = {
     'accept': '*/*',
     'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
 }
 
-# Интервал проверки для мониторинга в секундах
 CHECK_INTERVAL = 60
-# Файл для хранения ID уже отправленных объявлений
 SENT_ADS_FILE = 'sent_ads.txt'
 
-# Настройка логирования для отладки
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
-# --- Вспомогательные функции (без изменений) ---
 
 def load_sent_ads():
     """Загружает ID отправленных объявлений из файла."""
@@ -60,8 +53,6 @@ async def fetch_ads():
         logger.error(f"Ошибка при запросе к API: {e}")
         return []
 
-# --- НОВАЯ ФУНКЦИЯ ДЛЯ ОТПРАВКИ ОБЪЯВЛЕНИЙ С ФОТО ---
-# Она заменяет старую функцию format_ad_message
 
 async def send_ad_notification(context: ContextTypes.DEFAULT_TYPE, chat_id: int, ad: dict, notification_text: str = ""):
     """
@@ -113,10 +104,8 @@ async def send_ad_notification(context: ContextTypes.DEFAULT_TYPE, chat_id: int,
     if images:
         image_path = images[0].get('path')
         if image_path:
-            # Собираем полный URL для картинки
             photo_url = f"https://rms.kufar.by/v1/gallery/{image_path}"
 
-    # 3. Отправляем сообщение
     try:
         if photo_url:
             # Если нашли фото, используем send_photo
@@ -144,7 +133,6 @@ async def send_ad_notification(context: ContextTypes.DEFAULT_TYPE, chat_id: int,
             disable_web_page_preview=True
         )
 
-# --- ОБНОВЛЕННЫЕ ФУНКЦИИ ---
 
 async def monitoring_callback(context: ContextTypes.DEFAULT_TYPE):
     """Проверяет новые объявления и отправляет уведомления."""
@@ -160,7 +148,6 @@ async def monitoring_callback(context: ContextTypes.DEFAULT_TYPE):
         ad_id = ad.get('ad_id')
         if ad_id and str(ad_id) not in sent_ads:
             logger.info(f"Найдено новое объявление: {ad_id}")
-            # Вызываем новую функцию для отправки с фото
             await send_ad_notification(
                 context, 
                 chat_id, 
@@ -199,13 +186,11 @@ async def show_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     for ad in ads:
-        # Вызываем новую функцию для отправки с фото
         await send_ad_notification(context, chat_id, ad)
         await asyncio.sleep(1)
 
     await update.message.reply_text("✅ Все актуальные объявления показаны.")
 
-# --- Команды /start, /stop и main() остаются без изменений ---
 
 def remove_job_if_exists(name: str, context: ContextTypes.DEFAULT_TYPE) -> bool:
     current_jobs = context.job_queue.get_jobs_by_name(name)
