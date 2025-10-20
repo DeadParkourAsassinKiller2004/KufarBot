@@ -1,3 +1,7 @@
+# pip install "python-telegram-bot[job-queue]
+# pip install python-telegram-bot
+# pip install requests
+
 import logging
 import requests
 import os
