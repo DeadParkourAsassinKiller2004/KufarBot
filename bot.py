@@ -14,7 +14,7 @@ from telegram.error import TelegramError
 TELEGRAM_BOT_TOKEN = '8247116313:AAGVL3d_3SNPPYI7Wroo8nSE4HhAoEQkKlI'
 
 # Для получения chat id нужно перейти по ссылке https://api.telegram.org/bot<Токен вашего бота>/getUpdates и отправить сообщение в бот
-ALLOWED_CHAT_IDS = [575531308]
+ALLOWED_CHAT_IDS = [575531308, 753075180]
 
 # URL для запроса к API Kufar
 API_URL = 'https://api.kufar.by/search-api/v2/search/rendered-paginated?cat=1010&cmp=0&cur=USD&gtsy=country-belarus~province-minsk~locality-minsk&lang=ru&prc=r:0,360&rms=v.or:1&size=30&sort=lst.d&typ=let'
