@@ -198,7 +198,7 @@ async def monitoring_callback(context: ContextTypes.DEFAULT_TYPE):
                 context, 
                 chat_id, 
                 ad, 
-                notification_text="Новое объявление: <b>Найдена новая квартира!</b>\n\n"
+                notification_text="🔔 <b>Найдена новая квартира!</b>\n\n"
             )
             save_sent_ad(ad_id)
             await asyncio.sleep(2)
