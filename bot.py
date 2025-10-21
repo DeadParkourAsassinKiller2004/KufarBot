@@ -258,12 +258,47 @@ async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"Ошибка при очистке файла {SENT_ADS_FILE}: {e}")
         await update.message.reply_text("⚠️ Произошла ошибка при очистке списка отслеживания.")
 
+
+async def send_welcome_message(application: Application):
+    """Отправляет информационное сообщение со списком команд во все разрешённые чаты."""
+    welcome_text = (
+        "🤖 Бот запущен!\n\n"
+        "Доступные команды:\n"
+        "📌 /start — Запустить мониторинг новых объявлений\n"
+        "🛑 /stop — Остановить мониторинг\n"
+        "🔍 /show — Показать все актуальные объявления и обновить список\n"
+        "🗑️ /clear — Очистить список отслеживаемых объявлений\n\n"
+        "Я буду уведомлять вас о новых объявлениях с Kufar!"
+    )
+    
+    for chat_id in ALLOWED_CHAT_IDS:
+        try:
+            logger.info(f"Отправка приветственного сообщения в чат {chat_id}")
+            await application.bot.send_message(
+                chat_id=chat_id,
+                text=welcome_text,
+                parse_mode='HTML'
+            )
+            await asyncio.sleep(1)
+        except TelegramError as e:
+            logger.error(f"Ошибка при отправке сообщения в чат {chat_id}: {e}")
+
 def main():
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+
+    # Добавляем обработчики
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("stop", stop_command))
     application.add_handler(CommandHandler("show", show_command))
     application.add_handler(CommandHandler("clear", clear_command))
+
+    # Запускаем приветственное сообщение через job_queue (после инициализации)
+    application.job_queue.run_once(
+        callback=lambda context: send_welcome_message(application),
+        when=2,  # через 2 секунды после старта
+        name="welcome_message"
+    )
+
     logger.info("Бот запущен...")
     application.run_polling()
 
