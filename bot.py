@@ -41,10 +41,49 @@ def load_sent_ads():
     with open(SENT_ADS_FILE, 'r') as f:
         return set(line.strip() for line in f)
 
+
 def save_sent_ad(ad_id):
     """Сохраняет ID отправленного объявления в файл."""
     with open(SENT_ADS_FILE, 'a') as f:
         f.write(str(ad_id) + '\n')
+
+
+def sync_sent_ads_with_current(ads: list):
+    """
+    Синхронизирует sent_ads.txt с текущими объявлениями.
+    Удаляет из файла ad_id, которых больше нет в API.
+    """
+    current_ad_ids = {str(ad.get('ad_id')) for ad in ads if ad.get('ad_id')}
+    
+    if not current_ad_ids:
+        logger.info("Нет объявлений в API — файл sent_ads.txt будет очищен.")
+        open(SENT_ADS_FILE, 'w').close()
+        return
+
+    # Загружаем текущие сохранённые ID
+    saved_ads = load_sent_ads()
+    
+    # Оставляем только те, что есть в API
+    synced_ads = saved_ads.intersection(current_ad_ids)
+    
+    removed_count = len(saved_ads) - len(synced_ads)
+    if removed_count > 0:
+        logger.info(f"Удалено {removed_count} устаревших ad_id из {SENT_ADS_FILE}")
+
+    # Перезаписываем файл
+    with open(SENT_ADS_FILE, 'w') as f:
+        for ad_id in sorted(synced_ads):
+            f.write(ad_id + '\n')
+
+
+def remove_job_if_exists(name: str, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    current_jobs = context.job_queue.get_jobs_by_name(name)
+    if not current_jobs:
+        return False
+    for job in current_jobs:
+        job.schedule_removal()
+    return True
+
 
 async def fetch_ads():
     """Получает список объявлений с API Kufar."""
@@ -146,6 +185,10 @@ async def monitoring_callback(context: ContextTypes.DEFAULT_TYPE):
     if not ads:
         return
 
+    # === ДОБАВЛЕНО: Синхронизация sent_ads.txt с API ===
+    sync_sent_ads_with_current(ads)
+
+    # === Остальной код без изменений ===
     sent_ads = load_sent_ads()
     for ad in reversed(ads):
         ad_id = ad.get('ad_id')
@@ -155,53 +198,45 @@ async def monitoring_callback(context: ContextTypes.DEFAULT_TYPE):
                 context, 
                 chat_id, 
                 ad, 
-                notification_text="🔔 <b>Найдена новая квартира!</b>\n\n"
+                notification_text="Новое объявление: <b>Найдена новая квартира!</b>\n\n"
             )
             save_sent_ad(ad_id)
             await asyncio.sleep(2)
 
+
 async def show_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Показывает все текущие объявления и полностью обновляет 
-    список отслеживаемых ID.
-    """
     chat_id = update.effective_chat.id
     if chat_id not in ALLOWED_CHAT_IDS:
-        await update.message.reply_text("⛔ У вас нет доступа к этому боту.")
+        await update.message.reply_text("У вас нет доступа к этому боту.")
         return
 
-    await update.message.reply_text("🔍 Запрашиваю актуальные объявления и синхронизирую список...")
+    await update.message.reply_text("Запрашиваю актуальные объявления и синхронизирую список...")
     
     ads = await fetch_ads()
     if not ads:
         await update.message.reply_text("Не удалось найти объявления.")
         return
 
+    # === Синхронизация ===
+    sync_sent_ads_with_current(ads)
+
     all_current_ids = [str(ad.get('ad_id')) for ad in ads if ad.get('ad_id')]
     try:
         with open(SENT_ADS_FILE, 'w') as f:
             for ad_id in all_current_ids:
                 f.write(ad_id + '\n')
-        await update.message.reply_text(f"✅ **Список отслеживания сброшен.**\n\n👇 Найдено и запомнено объявлений: {len(ads)}. Отправляю их вам...")
+        await update.message.reply_text(f"Список отслеживания сброшен.\n\nНайдено и запомнено объявлений: {len(ads)}. Отправляю их вам...")
     except IOError as e:
         logger.error(f"Не удалось записать в файл {SENT_ADS_FILE}: {e}")
-        await update.message.reply_text("⚠️ Произошла ошибка при обновлении списка ID.")
+        await update.message.reply_text("Произошла ошибка при обновлении списка ID.")
         return
     
-    for ad in ads:
+    for ad in reversed(ads):
         await send_ad_notification(context, chat_id, ad)
         await asyncio.sleep(1)
 
-    await update.message.reply_text("✅ Все актуальные объявления показаны.")
+    await update.message.reply_text("Все актуальные объявления показаны.")
 
-
-def remove_job_if_exists(name: str, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    current_jobs = context.job_queue.get_jobs_by_name(name)
-    if not current_jobs:
-        return False
-    for job in current_jobs:
-        job.schedule_removal()
-    return True
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -221,6 +256,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text(f"✅ **Мониторинг запущен!**\n\nЯ буду проверять новые объявления каждые {CHECK_INTERVAL} секунд. Чтобы остановить, используйте команду /stop.")
 
+
 async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
     if chat_id not in ALLOWED_CHAT_IDS:
@@ -233,6 +269,7 @@ async def stop_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         text = "ℹ️ Мониторинг и не был запущен."
     await update.message.reply_text(text)
+
 
 async def clear_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Очищает файл с ID отправленных объявлений."""
@@ -283,6 +320,7 @@ async def send_welcome_message(application: Application):
         except TelegramError as e:
             logger.error(f"Ошибка при отправке сообщения в чат {chat_id}: {e}")
 
+
 def main():
     application = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
 
@@ -301,6 +339,7 @@ def main():
 
     logger.info("Бот запущен...")
     application.run_polling()
+
 
 if __name__ == '__main__':
     main()
