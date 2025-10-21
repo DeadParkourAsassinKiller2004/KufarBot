@@ -6,8 +6,8 @@ import logging
 import requests
 import os
 import asyncio
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import Update, InputMediaPhoto
+from telegram.ext import Application, CommandHandler, ContextTypes, CallbackContext
 from telegram.error import TelegramError
 
 # --- НАСТРОЙКИ ---
@@ -99,10 +99,9 @@ async def fetch_ads():
 
 async def send_ad_notification(context: ContextTypes.DEFAULT_TYPE, chat_id: int, ad: dict, notification_text: str = ""):
     """
-    Форматирует и отправляет одно объявление с фото (если оно есть).
-    Если фото нет или возникает ошибка, отправляет как текстовое сообщение.
+    Отправляет до 5 первых фото + текст в виде альб...
     """
-    # 1. Форматируем подпись (caption) для фото
+    # === 1. Формируем подпись ===
     link = ad.get('ad_link', 'Нет ссылки')
     subject = ad.get('subject', 'Без заголовка')
     description = ad.get('body_short', 'Нет описания').strip()
@@ -111,19 +110,12 @@ async def send_ad_notification(context: ContextTypes.DEFAULT_TYPE, chat_id: int,
     floor = 'N/A'
     
     price_raw = ad.get('price_usd')
-    if price_raw and price_raw.isdigit():
-        try:
-            price_usd = f"{int(price_raw) / 100.0:.2f}"
-        except (ValueError, TypeError):
-            price_usd = price_raw
-    else:
-        price_usd = 'N/A'
+    price_usd = f"{int(price_raw) / 100.0:.2f}" if price_raw and price_raw.isdigit() else 'N/A'
 
     for param in ad.get('account_parameters', []):
         if param.get('p') == 'address':
             address = param.get('v', 'Не указан')
             break
-    
     for param in ad.get('ad_parameters', []):
         if param.get('p') == 'size':
             size = param.get('v', 'N/A')
@@ -141,25 +133,30 @@ async def send_ad_notification(context: ContextTypes.DEFAULT_TYPE, chat_id: int,
         f"<a href='{link}'><b>➡️ Посмотреть на Kufar</b></a>"
     )
 
-    # 2. Пытаемся найти URL фото
-    photo_url = None
-    images = ad.get('images')
-    if images:
-        image_path = images[0].get('path')
-        if image_path:
-            photo_url = f"https://rms.kufar.by/v1/gallery/{image_path}"
+    # === 2. Собираем до 5 фото ===
+    images = ad.get('images', [])
+    media = []
+    for i, img in enumerate(images[:5]):
+        path = img.get('path')
+        if path:
+            url = f"https://rms.kufar.by/v1/gallery/{path}"
+            if i == 0:
+                # Первый — с подписью
+                media.append(
+                    InputMediaPhoto(
+                        media=url,
+                        caption=caption_text,
+                        parse_mode='HTML'
+                    )
+                )
+            else:
+                media.append(InputMediaPhoto(media=url))
 
+    # === 3. Отправляем ===
     try:
-        if photo_url:
-            # Если нашли фото, используем send_photo
-            await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=photo_url,
-                caption=caption_text,
-                parse_mode='HTML'
-            )
+        if media:
+            await context.bot.send_media_group(chat_id=chat_id, media=media)
         else:
-            # Если фото нет, отправляем как обычное сообщение
             await context.bot.send_message(
                 chat_id=chat_id,
                 text=caption_text,
@@ -167,7 +164,7 @@ async def send_ad_notification(context: ContextTypes.DEFAULT_TYPE, chat_id: int,
                 disable_web_page_preview=True
             )
     except TelegramError as e:
-        logger.warning(f"Не удалось отправить фото {photo_url}. Ошибка: {e}. Отправляю текстом.")
+        logger.warning(f"Ошибка при отправке медиа: {e}. Отправляю текстом.")
         await context.bot.send_message(
             chat_id=chat_id,
             text=caption_text,
