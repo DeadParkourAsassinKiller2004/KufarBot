@@ -83,7 +83,7 @@ def save_sent_ad(ad_id: str, pub_date: datetime):
 def get_latest_pub_date() -> datetime:
     """Возвращает самую свежую дату из sent_ads.txt."""
     ads = load_sent_ads()
-    if not ads:
+    if ads == {}:
         return datetime.now(timezone.utc) - timedelta(hours=3)
     return max(ads.values())
 
@@ -138,6 +138,7 @@ async def send_ad_notification(context: ContextTypes.DEFAULT_TYPE, chat_id: int,
         f"{notification_text}"
         f"<b>{subject}</b>\n\n"
         f"💵 <b>Цена:</b> {price_usd}$\n"
+        f"🕓 <b>Время публикации:</b> {datetime.fromisoformat(ad.get('list_time')) + timedelta(hours=3)}\n"
         f"📍 <b>Адрес:</b> {address}\n"
         f"📏 <b>Площадь:</b> {size} м²\n"
         f"🏢 <b>Этаж:</b> {floor}\n\n"
@@ -202,18 +203,17 @@ async def monitoring_callback(context: ContextTypes.DEFAULT_TYPE):
 
             if ad_id not in sent_ads and (latest_date is None or pub_date > latest_date):
                 new_ads.append((pub_date, ad))
-
-    # От новых к старым
-    new_ads.sort(reverse=False, key=lambda x: x[0])
-    for pub_date, ad in new_ads:
-        ad_id = str(ad['ad_id'])
-        logger.info(f"Новое: {ad_id} ({pub_date})")
-        await send_ad_notification(
-            context, chat_id, ad,
-            "🔔 <b>Найдена новая квартира!</b>\n\n"
-        )
-        save_sent_ad(ad_id, pub_date)
-        await asyncio.sleep(2)
+                
+                ad_id = str(ad['ad_id'])
+                logger.info(f"Новое: {ad_id} ({pub_date})")
+                await send_ad_notification(
+                context, chat_id, ad,
+                "🔔 <b>Найдена новая квартира!</b>\n\n"
+                )
+                save_sent_ad(ad_id, pub_date)
+                await asyncio.sleep(2)
+                latest_date = pub_date
+                print(f"LATEST DATE IS -- {latest_date}")
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
