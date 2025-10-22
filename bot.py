@@ -6,7 +6,7 @@ import logging
 import requests
 import os
 import asyncio
-from datetime import datetime, time
+from datetime import datetime, time, timezone, timedelta
 from typing import Dict
 from telegram import Update, InputMediaPhoto
 from telegram.ext import Application, CommandHandler, ContextTypes
@@ -80,11 +80,11 @@ def save_sent_ad(ad_id: str, pub_date: datetime):
         f.write(f"{ad_id} {iso_date}\n")
 
 
-def get_latest_pub_date() -> datetime | None:
+def get_latest_pub_date() -> datetime:
     """Возвращает самую свежую дату из sent_ads.txt."""
     ads = load_sent_ads()
     if not ads:
-        return None
+        return datetime.now(timezone.utc) - timedelta(hours=3)
     return max(ads.values())
 
 
@@ -187,21 +187,21 @@ async def monitoring_callback(context: ContextTypes.DEFAULT_TYPE):
 
     latest_date = get_latest_pub_date()
     sent_ads = load_sent_ads()
-
     new_ads = []
-    for ad in ads:
-        ad_id = str(ad.get('ad_id'))
-        list_time_str = ad.get('list_time') or ad.get('list_date')
-        if not ad_id or not list_time_str:
-            continue
-        try:
-            pub_date = datetime.fromisoformat(list_time_str.replace('Z', '+00:00'))
-        except:
-            continue
 
-        # Новое: дата > последней сохранённой
-        if ad_id not in sent_ads and (latest_date is None or pub_date > latest_date):
-            new_ads.append((pub_date, ad))
+    for ad in ads:
+            ad_id = str(ad.get('ad_id'))
+            list_time_str = ad.get('list_time') or ad.get('list_date')
+            if not ad_id or not list_time_str:
+                continue
+            try:
+                pub_date = datetime.fromisoformat(list_time_str.replace('Z', '+00:00'))
+            except Exception as e:
+                logger.debug(f'Неправильная дата {list_time_str}: {e}')
+                continue
+
+            if ad_id not in sent_ads and (latest_date is None or pub_date > latest_date):
+                new_ads.append((pub_date, ad))
 
     # От новых к старым
     new_ads.sort(reverse=False, key=lambda x: x[0])
