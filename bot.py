@@ -1,6 +1,4 @@
-# pip install "python-telegram-bot[job-queue]
-# pip install python-telegram-bot
-# pip install requests
+# pip install "python-telegram-bot[job-queue]" requests
 
 import logging
 import requests
@@ -74,16 +72,22 @@ async def clean_old_ads(context: ContextTypes.DEFAULT_TYPE):
 
 
 def save_sent_ad(ad_id: str, pub_date: datetime):
-    """Добавляет ad_id и дату в файл."""
+    """Добавляет ad_id и дату в файл, только если ad_id ещё нет."""
+    ads = load_sent_ads()
+    if ad_id in ads:
+        logger.debug(f"ad_id {ad_id} уже существует — пропускаем сохранение")
+        return
+
     iso_date = pub_date.isoformat().replace('+00:00', 'Z')
     with open(SENT_ADS_FILE, 'a', encoding='utf-8') as f:
         f.write(f"{ad_id} {iso_date}\n")
+    logger.debug(f"Сохранено новое: {ad_id} {iso_date}")
 
 
 def get_latest_pub_date() -> datetime:
     """Возвращает самую свежую дату из sent_ads.txt."""
     ads = load_sent_ads()
-    if ads == {}:
+    if not ads:
         return datetime.now(timezone.utc) - timedelta(hours=3)
     return max(ads.values())
 
@@ -191,29 +195,34 @@ async def monitoring_callback(context: ContextTypes.DEFAULT_TYPE):
     new_ads = []
 
     for ad in ads:
-            ad_id = str(ad.get('ad_id'))
-            list_time_str = ad.get('list_time') or ad.get('list_date')
-            if not ad_id or not list_time_str:
-                continue
-            try:
-                pub_date = datetime.fromisoformat(list_time_str.replace('Z', '+00:00'))
-            except Exception as e:
-                logger.debug(f'Неправильная дата {list_time_str}: {e}')
-                continue
+        ad_id = str(ad.get('ad_id'))
+        list_time_str = ad.get('list_time') or ad.get('list_date')
+        if not ad_id or not list_time_str:
+            continue
+        try:
+            pub_date = datetime.fromisoformat(list_time_str.replace('Z', '+00:00'))
+        except:
+            continue
 
-            if ad_id not in sent_ads and (latest_date is None or pub_date > latest_date):
-                new_ads.append((pub_date, ad))
-                
-                ad_id = str(ad['ad_id'])
-                logger.info(f"Новое: {ad_id} ({pub_date})")
-                await send_ad_notification(
-                context, chat_id, ad,
-                "🔔 <b>Найдена новая квартира!</b>\n\n"
-                )
-                save_sent_ad(ad_id, pub_date)
-                await asyncio.sleep(2)
-                latest_date = pub_date
-                print(f"LATEST DATE IS -- {latest_date}")
+        if ad_id not in sent_ads and pub_date > latest_date:
+            new_ads.append((pub_date, ad))
+
+    if not new_ads:
+        logger.info("Новых объявлений не найдено")
+        return
+
+    # От новых к старым
+    new_ads.sort(reverse=True, key=lambda x: x[0])
+
+    for pub_date, ad in new_ads:
+        ad_id = str(ad['ad_id'])
+        logger.info(f"Новое: {ad_id} ({pub_date})")
+        await send_ad_notification(
+            context, chat_id, ad,
+            "🔔 <b>Найдена новая квартира!</b>\n\n"
+        )
+        save_sent_ad(ad_id, pub_date)
+        await asyncio.sleep(2)
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
