@@ -11,7 +11,7 @@ class Ad(Base):
     flat_id = Column(Integer, ForeignKey("flat_info.id", ondelete="CASCADE"), nullable=False)
     ad_link = Column(Text, nullable=False)
     account_id = Column(String(50), nullable=True)
-    ad_id = Column(Integer, nullable=True)
+    ad_id = Column(Integer, unique=True, index=True, nullable=True)
     deal_type = Column(String(20), nullable=True)
     byn_price = Column(Numeric(12, 2), nullable=True)
     usd_price = Column(Numeric(12, 2), nullable=True)

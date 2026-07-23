@@ -5,11 +5,11 @@ from schemas.KufarFlat import KufarFlat
 from constants.constants import BASE_URL
 
 
-class Kufar:
+class KufarClient:
     def __init__(self):
         self._BASE_URL = BASE_URL
 
-    def fetch_kufar_flats(self, currency: Currency, price_from_to: tuple, size: int = 100) -> list[KufarFlat]:
+    def fetch_flats(self, currency: Currency, price_from_to: tuple, size: int = 100) -> list[KufarFlat]:
         url = f"{self._BASE_URL}search/rendered-paginated"
 
         params = {
