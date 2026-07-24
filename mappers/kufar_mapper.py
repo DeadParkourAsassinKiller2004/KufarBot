@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from constants.constants import BASE_IMAGE_URL
 from models import Ad, FlatInfo
 from schemas.KufarFlat import KufarFlat
 
@@ -76,7 +77,7 @@ def map_kufar_flat_to_orm(flat: KufarFlat) -> Ad:
 
     create_date = flat.list_time
 
-    images = [image.path for image in flat.images]
+    images = [f"{BASE_IMAGE_URL}{image.path}" for image in flat.images]
 
     ad = Ad(
         flat_info=flat_info,

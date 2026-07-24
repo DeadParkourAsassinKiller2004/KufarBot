@@ -20,6 +20,3 @@ class Ad(Base):
     create_date = Column(DateTime, nullable=True)
     description = Column(Text, nullable=True)
     image_links = Column(ARRAY(Text), nullable=True)
-
-    def __repr__(self):
-        return f"<Ad(id={self.id}, ad_id={self.ad_id}, deal_type='{self.deal_type}')>"

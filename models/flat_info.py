@@ -15,6 +15,3 @@ class FlatInfo(Base):
     square = Column(Numeric(12, 2), nullable=True)
     floor = Column(Integer, nullable=True)
     coordinates = Column(Text, nullable=False)
-
-    def __repr__(self):
-        return f"<FlatInfo(id={self.id}, address='{self.address}')>"
