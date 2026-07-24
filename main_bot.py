@@ -7,12 +7,12 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from constants.constants import PLACEHOLDER_IMAGE_URL
+from constants.constants import PLACEHOLDER_IMAGE_URL, BOT_TOKEN, CHAT_ID
 from tasks.kufar_jobs import kufar_fetch_job
 
 # Settings
-TOKEN = "8247116313:AAEe_NVaJznvYnCm4Ni-UDSqx2_RnRjsQCk"
-ADMIN_CHAT_ID = 575531308
+TOKEN = BOT_TOKEN
+ADMIN_CHAT_ID = CHAT_ID
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
