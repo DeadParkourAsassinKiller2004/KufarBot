@@ -15,7 +15,7 @@ class KufarClient:
         params = {
             "cat": "1010",
             "cur": currency.value,
-            "gtsy": "country-belarus~province-minsk~locality-minsk",
+            "gtsy": "country-belarus~province-minsk~locality-minsk", # TODO: сделать изменяемым параметром
             "lang": "ru",
             "prc": f"r:{price_from_to[0]},{price_from_to[1]}",
             "size": str(size),

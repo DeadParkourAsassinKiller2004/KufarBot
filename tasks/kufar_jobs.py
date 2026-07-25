@@ -6,7 +6,7 @@ from schemas.TelegramAdMessage import TelegramAdMessage
 from services.flat_service import FlatService
 from services.kufar_client import KufarClient
 from core.database import SessionLocal
-from schemas.Currency import Currency
+from constants.constants import CURRENCY, FROM_TO, SIZE
 
 
 def kufar_fetch_job() -> list[TelegramAdMessage]:
@@ -16,7 +16,8 @@ def kufar_fetch_job() -> list[TelegramAdMessage]:
 
     try:
         flats = kufar_client.fetch_flats(
-            currency=Currency.USD, price_from_to=(0, 350), size=130
+            #TODO: получать сеттинги из БД (отказаться от файла)
+            currency=CURRENCY, price_from_to=FROM_TO, size=SIZE
         )
         logger.info(f"Загружено {len(flats)} объявлений с Kufar API.")
 
